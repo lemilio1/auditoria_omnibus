@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { getSupabaseClient } from "@/lib/supabase/client"
-import { createUser } from "@/lib/actions/user-actions"
 import { UserPlus, Users, Search, MoreHorizontal, UserCog, Trash2 } from "lucide-react"
 import {
   Dialog,
@@ -47,7 +45,6 @@ interface User {
 }
 
 export default function UsuariosPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
@@ -65,9 +62,9 @@ export default function UsuariosPage() {
   useEffect(() => {
     const filtered = users.filter((user) => {
       const matchesSearch =
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.role.toLowerCase().includes(searchTerm.toLowerCase())
+        user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.role?.toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesTab =
         activeTab === "todos" ||
@@ -146,17 +143,41 @@ export default function UsuariosPage() {
         configuracion_avanzada: formData.get("configuracion_avanzada") === "on",
       }
 
-      // Crear usuario usando la acción del servidor
-      const result = await createUser({
+      // Crear usuario usando la API de Supabase directamente
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email,
         password,
+        email_confirm: true,
+      })
+
+      if (authError) {
+        throw new Error(authError.message)
+      }
+
+      const userId = authData.user.id
+
+      // Crear el perfil del usuario
+      const { error: profileError } = await supabase.from("user_profiles").insert({
+        id: userId,
+        email,
         name,
         role,
+        created_at: new Date().toISOString(),
+        is_active: true,
+      })
+
+      if (profileError) {
+        throw new Error(profileError.message)
+      }
+
+      // Crear los permisos del usuario
+      const { error: permissionsError } = await supabase.from("user_permissions").insert({
+        user_id: userId,
         permissions,
       })
 
-      if (result.error) {
-        throw new Error(result.error)
+      if (permissionsError) {
+        throw new Error(permissionsError.message)
       }
 
       toast({
@@ -256,7 +277,7 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Usuarios</h1>
         <p className="text-muted-foreground">Gestione los usuarios del sistema</p>

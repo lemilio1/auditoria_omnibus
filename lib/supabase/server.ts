@@ -1,8 +1,9 @@
-import { createServerClient as createClient } from "@supabase/ssr"
+import { createServerClient as createServerClientSupabase } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { getSupabaseClient } from "./singleton"
 
 export function createServerClient(cookieStore: ReturnType<typeof cookies>) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
+  return createServerClientSupabase(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value
@@ -53,3 +54,6 @@ export async function getUserPermissions(userId: string) {
 
   return data.permissions
 }
+
+// Exportamos también el cliente singleton para uso en el servidor si es necesario
+export { getSupabaseClient }
