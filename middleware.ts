@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
 export async function middleware(request: NextRequest) {
-  // Crear un cliente de Supabase
+  // Crear un cliente de Supabase específico para el middleware
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
   const supabase = createClient(supabaseUrl, supabaseKey)

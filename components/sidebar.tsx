@@ -14,7 +14,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Sidebar({ className, ...props }: SidebarProps) {
   const pathname = usePathname()
-  const { isOpen, toggleSidebar } = useSidebarContext()
+  const { state, openMobile, setOpenMobile } = useSidebarContext()
   const { user } = useAuth()
 
   // Verificar si el usuario tiene permisos para ver ciertas secciones
@@ -24,14 +24,17 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   return (
     <>
       {/* Overlay para móviles */}
-      {isOpen && (
-        <div className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm md:hidden" onClick={toggleSidebar} />
+      {openMobile && (
+        <div
+          className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm md:hidden"
+          onClick={() => setOpenMobile(false)}
+        />
       )}
 
       <div
         className={cn(
           "fixed left-0 top-16 z-30 h-[calc(100vh-4rem)] w-64 border-r bg-background transition-all duration-300 md:w-16 md:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          openMobile ? "translate-x-0" : "-translate-x-full",
           className,
         )}
         {...props}

@@ -9,17 +9,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { getSupabaseClient } from "@/lib/supabase/client"
+import { createBrowserClient } from "@/lib/supabase-client"
 import { useAuth } from "@/components/auth/auth-provider"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const { user } = useAuth()
-  const supabase = getSupabaseClient()
+  const supabase = createBrowserClient()
 
   useEffect(() => {
     // Si ya hay un usuario autenticado, redirigir al dashboard
@@ -31,33 +32,47 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Iniciando sesión con:", email, password)
+
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) {
+      if (signInError) {
+        console.error("Error de inicio de sesión:", signInError)
+        setError(signInError.message)
         toast({
           variant: "destructive",
           title: "Error al iniciar sesión",
-          description: error.message,
+          description: signInError.message,
         })
-      } else {
-        toast({
-          title: "Inicio de sesión exitoso",
-          description: "Bienvenido al sistema ONVIA",
-        })
-        router.push("/")
+        setIsLoading(false)
+        return
       }
-    } catch (err) {
+
+      console.log("Sesión iniciada correctamente:", data)
+
+      toast({
+        title: "Inicio de sesión exitoso",
+        description: "Bienvenido al sistema ONVIA",
+      })
+
+      // Esperar un momento antes de redirigir
+      setTimeout(() => {
+        router.push("/")
+      }, 1000)
+    } catch (err: any) {
+      console.error("Error inesperado:", err)
+      setError(err.message || "Error inesperado")
       toast({
         variant: "destructive",
         title: "Error",
         description: "Ocurrió un error al iniciar sesión",
       })
-      console.error(err)
     } finally {
       setIsLoading(false)
     }
@@ -108,6 +123,7 @@ export default function LoginPage() {
                 required
               />
             </div>
+            {error && <div className="text-sm text-red-500 font-medium">{error}</div>}
             <div className="text-sm text-muted-foreground">
               <p>Credenciales de prueba:</p>
               <p>Email: admin@onvia.com</p>
