@@ -1,3 +1,5 @@
-import { getSupabaseClient } from "./singleton"
+"use client"
 
-export { getSupabaseClient }
+import { getBrowserClient } from "./browser-client"
+
+export const getSupabaseClient = getBrowserClient

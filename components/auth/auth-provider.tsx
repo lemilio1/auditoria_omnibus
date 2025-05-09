@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import getSupabase from "@/lib/supabase-browser"
+import { getSupabaseClient } from "@/lib/supabase/client"
 
 type UserProfile = {
   id: string
@@ -29,7 +29,7 @@ export const useAuth = () => useContext(AuthContext)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = getSupabase()
+  const supabase = getSupabaseClient()
 
   useEffect(() => {
     // Función para obtener el usuario actual

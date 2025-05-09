@@ -1,9 +1,9 @@
 import { createServerClient as createServerClientSupabase } from "@supabase/ssr"
-import { cookies } from "next/headers"
-import { getSupabaseClient } from "./singleton"
+import type { cookies } from "next/headers"
+import { getServerClient } from "./server-client"
 
 export function createServerClient(cookieStore: ReturnType<typeof cookies>) {
-  return createServerClientSupabase(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
+  return createServerClientSupabase(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value
@@ -19,8 +19,7 @@ export function createServerClient(cookieStore: ReturnType<typeof cookies>) {
 }
 
 export async function getServerSession() {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
+  const supabase = getServerClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -28,8 +27,7 @@ export async function getServerSession() {
 }
 
 export async function getUserProfile(userId: string) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
+  const supabase = getServerClient()
 
   const { data, error } = await supabase.from("user_profiles").select("*").eq("id", userId).single()
 
@@ -42,8 +40,7 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function getUserPermissions(userId: string) {
-  const cookieStore = cookies()
-  const supabase = createServerClient(cookieStore)
+  const supabase = getServerClient()
 
   const { data, error } = await supabase.from("user_permissions").select("permissions").eq("user_id", userId).single()
 
@@ -55,5 +52,5 @@ export async function getUserPermissions(userId: string) {
   return data.permissions
 }
 
-// Exportamos también el cliente singleton para uso en el servidor si es necesario
-export { getSupabaseClient }
+// Exportamos el cliente para el servidor
+export { getServerClient }
