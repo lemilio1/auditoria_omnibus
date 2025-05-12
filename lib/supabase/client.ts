@@ -1,5 +1,7 @@
 "use client"
 
-import { getBrowserClient } from "./browser-client"
+import { createClientComponentClient } from "@supabase/supabase-js"
 
-export const getSupabaseClient = getBrowserClient
+export function getSupabaseClient() {
+  return createClientComponentClient()
+}

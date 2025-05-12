@@ -15,8 +15,9 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // Rutas públicas
-  if (path === "/login") {
-    if (session) {
+  if (path === "/login" || path === "/test-auth") {
+    // Si ya hay una sesión y estamos en login, redirigir al dashboard
+    if (session && path === "/login") {
       return NextResponse.redirect(new URL("/", request.url))
     }
     return NextResponse.next()
@@ -27,44 +28,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Verificar permisos para rutas específicas
-  if (path.startsWith("/usuarios") || path.startsWith("/configuracion/avanzada")) {
-    // Obtener el perfil del usuario
-    const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", session.user.id).single()
-
-    const role = profile?.role
-
-    if (role !== "administrador" && role !== "admin_superior" && role !== "super_usuario") {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-  }
-
-  if (path.startsWith("/logs")) {
-    // Obtener el perfil del usuario
-    const { data: profile } = await supabase.from("user_profiles").select("role").eq("id", session.user.id).single()
-
-    const role = profile?.role
-
-    if (role !== "admin_superior" && role !== "super_usuario") {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-  }
-
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/login",
-    "/dashboard/:path*",
-    "/buses/:path*",
-    "/novedades/:path*",
-    "/usuarios",
-    "/usuarios/:path*",
-    "/configuracion/:path*",
-    "/logs/:path*",
-    "/reportes/:path*",
-    "/notificaciones/:path*",
-  ],
+  matcher: ["/", "/login", "/test-auth"],
 }

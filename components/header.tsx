@@ -1,11 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Bus, Menu, Bell, LogOut, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebarContext } from "@/components/ui/sidebar"
-import { useAuth } from "@/components/auth/auth-provider"
+import { getSupabase } from "@/lib/supabase"
+import { useState, useEffect } from "react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +18,42 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function Header() {
   const { toggleSidebar } = useSidebarContext()
-  const router = useRouter()
-  const { user, signOut } = useAuth()
+  const [user, setUser] = useState<any>(null)
+  const supabase = getSupabase()
+
+  useEffect(() => {
+    async function getUser() {
+      try {
+        const { data } = await supabase.auth.getSession()
+
+        if (data.session) {
+          const { data: profiles, error } = await supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", data.session.user.id)
+
+          if (error) {
+            console.error("Error al obtener perfil en Header:", error)
+            return
+          }
+
+          if (profiles && profiles.length > 0) {
+            setUser(profiles[0])
+          } else {
+            // Si no hay perfil, usar información básica de la sesión
+            setUser({
+              name: data.session.user.email?.split("@")[0] || "Usuario",
+              email: data.session.user.email,
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error al verificar sesión en Header:", error)
+      }
+    }
+
+    getUser()
+  }, [supabase])
 
   // Obtener iniciales del nombre
   const userInitials = user?.name
@@ -32,8 +66,8 @@ export function Header() {
     : "U"
 
   const handleSignOut = async () => {
-    await signOut()
-    router.push("/login")
+    await supabase.auth.signOut()
+    window.location.href = "/login"
   }
 
   return (
@@ -65,7 +99,7 @@ export function Header() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{user?.name || "Usuario"}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push("/perfil")}>
+              <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" />
                 <span>Mi Perfil</span>
               </DropdownMenuItem>

@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSidebarContext } from "@/components/ui/sidebar"
-import { useAuth } from "@/components/auth/auth-provider"
+import { getSupabase } from "@/lib/supabase"
+import { useState, useEffect } from "react"
 import { Bus, FileText, Home, Settings, Bell, ClipboardList, Users, History, FileBarChart } from "lucide-react"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
@@ -15,7 +16,43 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 export function Sidebar({ className, ...props }: SidebarProps) {
   const pathname = usePathname()
   const { state, openMobile, setOpenMobile } = useSidebarContext()
-  const { user } = useAuth()
+  const [user, setUser] = useState<any>(null)
+  const supabase = getSupabase()
+
+  useEffect(() => {
+    async function getUser() {
+      try {
+        const { data } = await supabase.auth.getSession()
+
+        if (data.session) {
+          const { data: profiles, error } = await supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", data.session.user.id)
+
+          if (error) {
+            console.error("Error al obtener perfil en Sidebar:", error)
+            return
+          }
+
+          if (profiles && profiles.length > 0) {
+            setUser(profiles[0])
+          } else {
+            // Si no hay perfil, usar información básica de la sesión
+            setUser({
+              name: data.session.user.email?.split("@")[0] || "Usuario",
+              email: data.session.user.email,
+              role: "visitante", // Rol por defecto
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error al verificar sesión en Sidebar:", error)
+      }
+    }
+
+    getUser()
+  }, [supabase])
 
   // Verificar si el usuario tiene permisos para ver ciertas secciones
   const canViewUsers = user?.role && ["administrador", "admin_superior", "super_usuario"].includes(user.role)

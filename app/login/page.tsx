@@ -2,32 +2,34 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Bus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { createBrowserClient } from "@/lib/supabase-client"
-import { useAuth } from "@/components/auth/auth-provider"
+import { getSupabase } from "@/lib/supabase"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
   const { toast } = useToast()
-  const { user } = useAuth()
-  const supabase = createBrowserClient()
+  const supabase = getSupabase()
 
+  // Verificar si ya hay una sesión activa al cargar la página
   useEffect(() => {
-    // Si ya hay un usuario autenticado, redirigir al dashboard
-    if (user) {
-      router.push("/")
+    async function checkSession() {
+      const { data } = await supabase.auth.getSession()
+      if (data.session) {
+        console.log("Sesión activa detectada, redirigiendo...")
+        window.location.href = "/"
+      }
     }
-  }, [user, router])
+
+    checkSession()
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,10 +63,8 @@ export default function LoginPage() {
         description: "Bienvenido al sistema ONVIA",
       })
 
-      // Esperar un momento antes de redirigir
-      setTimeout(() => {
-        router.push("/")
-      }, 1000)
+      // Usar window.location para una redirección forzada
+      window.location.href = "/"
     } catch (err: any) {
       console.error("Error inesperado:", err)
       setError(err.message || "Error inesperado")
@@ -76,15 +76,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  // Si está cargando o ya hay un usuario, mostrar un indicador de carga
-  if (user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    )
   }
 
   return (

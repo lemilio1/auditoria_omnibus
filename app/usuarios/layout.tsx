@@ -1,7 +1,6 @@
 import type React from "react"
 import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
-import AuthGuard from "@/components/auth/auth-guard"
 
 export default function UsuariosLayout({
   children,
@@ -9,14 +8,12 @@ export default function UsuariosLayout({
   children: React.ReactNode
 }>) {
   return (
-    <AuthGuard>
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <div className="flex flex-1">
-          <Sidebar />
-          <main className="flex-1">{children}</main>
-        </div>
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <div className="flex flex-1">
+        <Sidebar />
+        <main className="flex-1">{children}</main>
       </div>
-    </AuthGuard>
+    </div>
   )
 }
