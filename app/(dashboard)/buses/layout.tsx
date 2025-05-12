@@ -3,7 +3,7 @@ import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import { SidebarProvider } from "@/components/ui/sidebar"
 
-export default function UsuariosLayout({
+export default function BusesLayout({
   children,
 }: Readonly<{
   children: React.ReactNode

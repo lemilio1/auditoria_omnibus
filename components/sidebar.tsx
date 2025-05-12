@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useSidebarContext } from "@/components/ui/sidebar"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase/client"
 import { useState, useEffect } from "react"
 import { Bus, FileText, Home, Settings, Bell, ClipboardList, Users, History, FileBarChart } from "lucide-react"
 
@@ -15,9 +15,21 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Sidebar({ className, ...props }: SidebarProps) {
   const pathname = usePathname()
-  const { state, openMobile, setOpenMobile } = useSidebarContext()
+
+  // Usar valores predeterminados en caso de que no esté dentro de un SidebarProvider
+  const sidebarContext = useSidebarContext()
+  let state = "expanded"
+  let openMobile = false
+  let setOpenMobile = (_: boolean) => {}
+
+  if (sidebarContext) {
+    state = sidebarContext.state
+    openMobile = sidebarContext.openMobile
+    setOpenMobile = sidebarContext.setOpenMobile
+  }
+
   const [user, setUser] = useState<any>(null)
-  const supabase = getSupabase()
+  const supabase = getSupabaseClient()
 
   useEffect(() => {
     async function getUser() {

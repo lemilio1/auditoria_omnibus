@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Bus, Menu, Bell, LogOut, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSidebarContext } from "@/components/ui/sidebar"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase/client"
 import { useState, useEffect } from "react"
 import {
   DropdownMenu,
@@ -17,9 +17,19 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 export function Header() {
-  const { toggleSidebar } = useSidebarContext()
+  // Usar try/catch para manejar el caso en que no esté dentro de un SidebarProvider
+  const sidebarContext = useSidebarContext()
+  let toggleSidebar: () => void = () => {}
+  try {
+    if (sidebarContext) {
+      toggleSidebar = sidebarContext.toggleSidebar
+    }
+  } catch (error) {
+    console.warn("Header: SidebarContext no disponible")
+  }
+
   const [user, setUser] = useState<any>(null)
-  const supabase = getSupabase()
+  const supabase = getSupabaseClient()
 
   useEffect(() => {
     async function getUser() {
