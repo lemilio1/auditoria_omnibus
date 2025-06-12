@@ -2,76 +2,78 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { Bus } from "lucide-react"
+import { Bus, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabase, getSupabaseStatus } from "@/lib/supabase"
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState("admin@onvia.com")
+  const [password, setPassword] = useState("admin123")
+  const [supabaseStatus, setSupabaseStatus] = useState<any>(null)
   const { toast } = useToast()
   const supabase = getSupabase()
 
-  // Verificar si ya hay una sesión activa al cargar la página
   useEffect(() => {
-    async function checkSession() {
-      const { data } = await supabase.auth.getSession()
-      if (data.session) {
-        console.log("Sesión activa detectada, redirigiendo...")
-        window.location.href = "/"
-      }
-    }
+    const status = getSupabaseStatus()
+    setSupabaseStatus(status)
 
-    checkSession()
-  }, [supabase])
+    if (status.isDemoMode) {
+      toast({
+        title: "Modo Demostración",
+        description: "Usando sistema de autenticación simulado para demostración.",
+      })
+    }
+  }, [toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setError(null)
 
     try {
-      console.log("Iniciando sesión con:", email, password)
+      console.log("Intentando iniciar sesión con:", email)
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password.trim(),
       })
 
-      if (signInError) {
-        console.error("Error de inicio de sesión:", signInError)
-        setError(signInError.message)
+      console.log("Resultado del login:", { data, error })
+
+      if (error) {
+        console.error("Error de autenticación:", error)
         toast({
           variant: "destructive",
           title: "Error al iniciar sesión",
-          description: signInError.message,
+          description: error.message,
         })
-        setIsLoading(false)
         return
       }
 
-      console.log("Sesión iniciada correctamente:", data)
+      if (data.user) {
+        console.log("Usuario autenticado exitosamente:", data.user.id)
 
-      toast({
-        title: "Inicio de sesión exitoso",
-        description: "Bienvenido al sistema ONVIA",
-      })
+        toast({
+          title: "Inicio de sesión exitoso",
+          description: "Bienvenido al sistema ONVIA",
+        })
 
-      // Usar window.location para una redirección forzada
-      window.location.href = "/"
+        // Redirigir al dashboard
+        setTimeout(() => {
+          window.location.href = "/"
+        }, 1000)
+      }
     } catch (err: any) {
       console.error("Error inesperado:", err)
-      setError(err.message || "Error inesperado")
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Ocurrió un error al iniciar sesión",
+        title: "Error de conexión",
+        description: "No se pudo procesar la solicitud de inicio de sesión.",
       })
     } finally {
       setIsLoading(false)
@@ -85,10 +87,23 @@ export default function LoginPage() {
         <h1 className="text-3xl md:text-4xl font-bold ml-2">ONVIA</h1>
       </div>
 
+      {supabaseStatus?.isDemoMode && (
+        <Alert className="w-full max-w-md mb-4">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Modo Demostración:</strong> Sistema completamente funcional con datos simulados.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-xl md:text-2xl">Iniciar Sesión</CardTitle>
-          <CardDescription>Ingrese sus credenciales para acceder al sistema</CardDescription>
+          <CardDescription>
+            {supabaseStatus?.isDemoMode
+              ? "Modo demostración - Use las credenciales de prueba"
+              : "Ingrese sus credenciales para acceder al sistema"}
+          </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -101,6 +116,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -112,13 +128,22 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
-            {error && <div className="text-sm text-red-500 font-medium">{error}</div>}
             <div className="text-sm text-muted-foreground">
-              <p>Credenciales de prueba:</p>
+              <p>
+                <strong>Credenciales de prueba:</strong>
+              </p>
               <p>Email: admin@onvia.com</p>
               <p>Contraseña: admin123</p>
+              {supabaseStatus?.isDemoMode && (
+                <p className="mt-2 text-xs">
+                  <strong>También disponible:</strong>
+                  <br />
+                  user@onvia.com / user123
+                </p>
+              )}
             </div>
           </CardContent>
           <CardFooter>

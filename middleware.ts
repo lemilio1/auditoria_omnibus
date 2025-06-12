@@ -1,36 +1,34 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 
 export async function middleware(request: NextRequest) {
-  // Crear un cliente de Supabase específico para el middleware
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
-  const supabase = createClient(supabaseUrl, supabaseKey)
-
-  // Verificar la sesión
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
   const path = request.nextUrl.pathname
 
-  // Rutas públicas
-  if (path === "/login" || path === "/test-auth") {
-    // Si ya hay una sesión y estamos en login, redirigir al dashboard
-    if (session && path === "/login") {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
+  // Permitir todas las rutas de API y archivos estáticos
+  if (path.startsWith("/api/") || path.startsWith("/_next/") || path.startsWith("/favicon.ico") || path.includes(".")) {
     return NextResponse.next()
   }
 
-  // Proteger rutas privadas
-  if (!session) {
-    return NextResponse.redirect(new URL("/login", request.url))
+  // Rutas públicas que no requieren autenticación
+  const publicRoutes = ["/login", "/test-auth"]
+  if (publicRoutes.includes(path)) {
+    return NextResponse.next()
   }
 
+  // Para todas las demás rutas, simplemente continuar
+  // La verificación de autenticación se hará en el lado del cliente
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ["/", "/login", "/test-auth"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  ],
 }

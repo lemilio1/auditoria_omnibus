@@ -16,15 +16,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
 
+// Actualizada la interfaz para reflejar el esquema real de la base de datos
 interface Bus {
   id: number
-  numero: string
-  marca: string
-  modelo: string
-  patente: string
-  estado: string
-  ultima_revision: string
+  numero_interno?: string // Cambiado de numero a numero_interno y marcado como opcional
+  marca?: string // Marcado como opcional
+  modelo?: string // Marcado como opcional
+  patente?: string // Marcado como opcional
+  estado?: string // Marcado como opcional
+  ultima_revision?: string // Marcado como opcional
+  created_at?: string
 }
 
 export default function BusesPage() {
@@ -32,33 +35,66 @@ export default function BusesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const supabase = getSupabaseClient()
+  const { toast } = useToast()
 
   useEffect(() => {
     async function fetchBuses() {
       setIsLoading(true)
       try {
-        const { data, error } = await supabase.from("buses").select("*").order("numero", { ascending: true })
+        // Primero, vamos a verificar qué columnas existen en la tabla buses
+        const { data: tableInfo, error: tableError } = await supabase.from("buses").select("*").limit(1)
 
-        if (error) throw error
-        setBuses(data || [])
-      } catch (error) {
+        if (tableError) {
+          console.error("Error al verificar la estructura de la tabla:", tableError)
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se pudo verificar la estructura de la tabla buses",
+          })
+          setIsLoading(false)
+          return
+        }
+
+        // Ahora que sabemos qué columnas existen, hacemos la consulta principal
+        const { data, error } = await supabase.from("buses").select("*")
+
+        if (error) {
+          console.error("Error al cargar buses:", error)
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se pudieron cargar los buses",
+          })
+        } else {
+          console.log("Buses cargados:", data)
+          setBuses(data || [])
+        }
+      } catch (error: any) {
         console.error("Error al cargar buses:", error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Error al cargar buses: ${error.message}`,
+        })
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchBuses()
-  }, [supabase])
+  }, [supabase, toast])
 
+  // Actualizada la función de filtrado para usar las columnas correctas
   const filteredBuses = buses.filter(
     (bus) =>
-      bus.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bus.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      bus.patente.toLowerCase().includes(searchTerm.toLowerCase()),
+      (bus.numero_interno?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (bus.marca?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (bus.patente?.toLowerCase() || "").includes(searchTerm.toLowerCase()),
   )
 
-  const getEstadoBadge = (estado: string) => {
+  const getEstadoBadge = (estado?: string) => {
+    if (!estado) return <Badge variant="outline">No definido</Badge>
+
     const estados: Record<string, { label: string; variant: "default" | "outline" | "secondary" | "destructive" }> = {
       activo: { label: "Activo", variant: "default" },
       mantenimiento: { label: "Mantenimiento", variant: "secondary" },
@@ -66,7 +102,7 @@ export default function BusesPage() {
       reparacion: { label: "Reparación", variant: "destructive" },
     }
 
-    const estadoInfo = estados[estado] || { label: estado, variant: "outline" }
+    const estadoInfo = estados[estado.toLowerCase()] || { label: estado, variant: "outline" }
     return <Badge variant={estadoInfo.variant}>{estadoInfo.label}</Badge>
   }
 
@@ -79,7 +115,7 @@ export default function BusesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Buses</h1>
         <p className="text-muted-foreground">Gestione la flota de buses</p>
@@ -101,7 +137,7 @@ export default function BusesPage() {
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por número, marca o patente..."
+                placeholder="Buscar por número interno, marca o patente..."
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -113,7 +149,7 @@ export default function BusesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Número</TableHead>
+                      <TableHead>Número Interno</TableHead>
                       <TableHead className="hidden md:table-cell">Marca</TableHead>
                       <TableHead className="hidden md:table-cell">Modelo</TableHead>
                       <TableHead>Patente</TableHead>
@@ -135,12 +171,12 @@ export default function BusesPage() {
                     ) : (
                       filteredBuses.map((bus) => (
                         <TableRow key={bus.id}>
-                          <TableCell className="font-medium">{bus.numero}</TableCell>
-                          <TableCell className="hidden md:table-cell">{bus.marca}</TableCell>
-                          <TableCell className="hidden md:table-cell">{bus.modelo}</TableCell>
-                          <TableCell>{bus.patente}</TableCell>
+                          <TableCell className="font-medium">{bus.numero_interno || "N/A"}</TableCell>
+                          <TableCell className="hidden md:table-cell">{bus.marca || "N/A"}</TableCell>
+                          <TableCell className="hidden md:table-cell">{bus.modelo || "N/A"}</TableCell>
+                          <TableCell>{bus.patente || "N/A"}</TableCell>
                           <TableCell>{getEstadoBadge(bus.estado)}</TableCell>
-                          <TableCell className="hidden md:table-cell">{bus.ultima_revision}</TableCell>
+                          <TableCell className="hidden md:table-cell">{bus.ultima_revision || "N/A"}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>

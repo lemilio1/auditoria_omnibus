@@ -1,96 +1,59 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabase, getSupabaseStatus } from "@/lib/supabase"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Bus, FileText, Bell, FileBarChart } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Info } from "lucide-react"
 
 export default function HomePage() {
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [sessionInfo, setSessionInfo] = useState<any>(null)
-  const router = useRouter()
+  const [isDemoMode, setIsDemoMode] = useState(false)
   const supabase = getSupabase()
 
   useEffect(() => {
     async function getUser() {
       try {
+        const status = getSupabaseStatus()
+        setIsDemoMode(status.isDemoMode)
+
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-        setSessionInfo(sessionData)
 
-        if (sessionError) {
-          console.error("Error al obtener sesión:", sessionError)
-          setError(`Error de sesión: ${sessionError.message}`)
-          return
-        }
-
-        if (!sessionData.session) {
-          console.log("No hay sesión activa, redirigiendo a login")
-          window.location.href = "/login"
+        if (sessionError || !sessionData.session) {
+          console.log("No hay sesión activa")
+          setIsLoading(false)
           return
         }
 
         const userId = sessionData.session.user.id
-        console.log("ID de usuario autenticado:", userId)
+        console.log("Usuario autenticado:", userId)
 
-        // Intentar crear un perfil básico si no existe
-        const { data: existingProfiles, error: checkError } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("id", userId)
-
-        if (checkError) {
-          console.error("Error al verificar perfil existente:", checkError)
-          setError(`Error al verificar perfil: ${checkError.message}`)
-          return
-        }
-
-        if (!existingProfiles || existingProfiles.length === 0) {
-          console.log("No se encontró perfil, intentando crear uno básico")
-
-          // Obtener el email del usuario desde la sesión
-          const userEmail = sessionData.session.user.email
-
-          // Crear un perfil básico
-          const { data: newProfile, error: insertError } = await supabase
-            .from("user_profiles")
-            .insert([
-              {
-                id: userId,
-                email: userEmail,
-                name: userEmail?.split("@")[0] || "Usuario",
-                role: "visitante",
-                is_active: true,
-                created_at: new Date().toISOString(),
-              },
-            ])
-            .select()
-
-          if (insertError) {
-            console.error("Error al crear perfil básico:", insertError)
-            setError(`Error al crear perfil: ${insertError.message}`)
-            return
-          }
-
-          if (newProfile && newProfile.length > 0) {
-            console.log("Perfil básico creado:", newProfile[0])
-            setUser(newProfile[0])
-          } else {
-            setError("No se pudo crear un perfil básico")
-          }
+        // En modo demo, el usuario ya viene en la sesión
+        if (status.isDemoMode) {
+          setUser(sessionData.session.user)
         } else {
-          console.log("Perfil encontrado:", existingProfiles[0])
-          setUser(existingProfiles[0])
+          // Aquí iría la lógica para Supabase real
+          const { data: profile, error: profileError } = await supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", userId)
+            .single()
+
+          if (profileError) {
+            console.error("Error al obtener perfil:", profileError)
+            setUser(sessionData.session.user)
+          } else {
+            setUser(profile)
+          }
         }
       } catch (error: any) {
-        console.error("Error inesperado:", error)
-        setError(`Error inesperado: ${error.message}`)
+        console.error("Error al obtener usuario:", error)
       } finally {
         setIsLoading(false)
       }
@@ -101,42 +64,12 @@ export default function HomePage() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    window.location.href = "/login"
   }
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>No se pudo cargar el perfil</CardTitle>
-            <CardDescription>
-              Se ha detectado una sesión activa pero no se pudo cargar el perfil del usuario.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm">{error}</div>
-            )}
-            {sessionInfo && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-800 text-sm">
-                <p>Información de sesión:</p>
-                <pre className="mt-2 text-xs overflow-auto">{JSON.stringify(sessionInfo, null, 2)}</pre>
-              </div>
-            )}
-            <Button onClick={() => (window.location.href = "/login")} className="w-full">
-              Volver al login
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     )
   }
@@ -149,6 +82,15 @@ export default function HomePage() {
           <Sidebar />
           <main className="flex-1 overflow-auto p-4 md:p-6 pt-20 md:pt-24 md:ml-16">
             <div className="space-y-6">
+              {isDemoMode && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Modo Demostración:</strong> Sistema completamente funcional con datos simulados.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
                 <p className="text-muted-foreground">Bienvenido, {user?.name || "Usuario"}</p>
@@ -160,8 +102,8 @@ export default function HomePage() {
                     <CardTitle className="text-sm font-medium">Total de Buses</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">24</div>
-                    <p className="text-xs text-muted-foreground mt-1">+2 desde el último mes</p>
+                    <div className="text-2xl font-bold">3</div>
+                    <p className="text-xs text-muted-foreground mt-1">Datos de demostración</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -169,8 +111,8 @@ export default function HomePage() {
                     <CardTitle className="text-sm font-medium">Novedades Pendientes</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">7</div>
-                    <p className="text-xs text-muted-foreground mt-1">-3 desde la semana pasada</p>
+                    <div className="text-2xl font-bold">2</div>
+                    <p className="text-xs text-muted-foreground mt-1">Datos de demostración</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -178,8 +120,8 @@ export default function HomePage() {
                     <CardTitle className="text-sm font-medium">Notificaciones</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">12</div>
-                    <p className="text-xs text-muted-foreground mt-1">5 sin leer</p>
+                    <div className="text-2xl font-bold">5</div>
+                    <p className="text-xs text-muted-foreground mt-1">Datos de demostración</p>
                   </CardContent>
                 </Card>
                 <Card>
@@ -187,8 +129,8 @@ export default function HomePage() {
                     <CardTitle className="text-sm font-medium">Reportes Generados</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">42</div>
-                    <p className="text-xs text-muted-foreground mt-1">+8 desde el último mes</p>
+                    <div className="text-2xl font-bold">8</div>
+                    <p className="text-xs text-muted-foreground mt-1">Datos de demostración</p>
                   </CardContent>
                 </Card>
               </div>
@@ -235,50 +177,34 @@ export default function HomePage() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Actividad Reciente</CardTitle>
-                    <CardDescription>Últimas actividades en el sistema</CardDescription>
+                    <CardTitle>Información del Usuario</CardTitle>
+                    <CardDescription>Detalles de tu cuenta</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-4">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <Bus className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium">Nuevo bus agregado</p>
-                          <p className="text-xs text-muted-foreground">Bus #1234 - Mercedes Benz</p>
-                          <p className="text-xs text-muted-foreground">Hace 2 horas</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-4">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <FileText className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium">Novedad reportada</p>
-                          <p className="text-xs text-muted-foreground">Bus #5678 - Problema en puerta trasera</p>
-                          <p className="text-xs text-muted-foreground">Hace 5 horas</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-4">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <Bell className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <p className="text-sm font-medium">Notificación enviada</p>
-                          <p className="text-xs text-muted-foreground">Mantenimiento programado para mañana</p>
-                          <p className="text-xs text-muted-foreground">Hace 1 día</p>
-                        </div>
-                      </div>
+                    <div className="space-y-2">
+                      <p>
+                        <strong>Nombre:</strong> {user?.name || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Email:</strong> {user?.email || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Rol:</strong> {user?.role || "N/A"}
+                      </p>
+                      <p>
+                        <strong>Estado:</strong> {user?.is_active ? "Activo" : "Inactivo"}
+                      </p>
+                      {isDemoMode && (
+                        <p className="text-sm text-muted-foreground">
+                          <strong>Modo:</strong> Demostración
+                        </p>
+                      )}
                     </div>
+                    <Button variant="destructive" onClick={handleSignOut} className="mt-4">
+                      Cerrar sesión
+                    </Button>
                   </CardContent>
                 </Card>
-              </div>
-
-              <div className="mt-8">
-                <Button variant="destructive" onClick={handleSignOut}>
-                  Cerrar sesión
-                </Button>
               </div>
             </div>
           </main>
