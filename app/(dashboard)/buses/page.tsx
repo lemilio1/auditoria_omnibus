@@ -127,7 +127,7 @@ export default function BusesPage() {
             <CardTitle>Buses</CardTitle>
             <CardDescription>Lista de buses registrados en el sistema</CardDescription>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button className="flex items-center gap-2" onClick={() => (window.location.href = "/buses/nuevo")}>
             <Plus className="h-4 w-4" />
             <span>Nuevo Bus</span>
           </Button>
