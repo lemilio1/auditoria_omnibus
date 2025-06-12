@@ -10,7 +10,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Rutas públicas que no requieren autenticación
-  const publicRoutes = ["/login", "/test-auth"]
+  const publicRoutes = ["/login", "/test-auth", "/auth/error"]
   if (publicRoutes.includes(path)) {
     return NextResponse.next()
   }

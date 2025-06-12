@@ -20,7 +20,7 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
 
   // Rutas públicas que no requieren autenticación
   const publicRoutes = ["/login", "/test-auth"]
-  const isPublicRoute = publicRoutes.includes(pathname)
+  const isPublicRoute = publicRoutes.includes(pathname) || pathname.startsWith("/auth/")
 
   useEffect(() => {
     async function checkAuth() {
@@ -35,12 +35,17 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
         if (error) {
           console.error("Error al verificar sesión:", error)
           setIsAuthenticated(false)
+          // Si es un error crítico de autenticación, redirigir a la página de error
+          if (error.message && error.message.includes("auth") && !pathname.startsWith("/auth/")) {
+            router.push("/auth/error?error=" + encodeURIComponent(error.message))
+            return
+          }
         } else {
           setIsAuthenticated(!!session)
         }
 
         // Si estamos en una ruta pública y hay sesión, redirigir al dashboard
-        if (session && isPublicRoute) {
+        if (session && isPublicRoute && !pathname.startsWith("/auth/")) {
           console.log("Usuario autenticado en ruta pública, redirigiendo...")
           router.push("/")
           return
