@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
-import { getSupabase, getSupabaseStatus } from "@/lib/supabase"
+import { getSupabaseClient, getSupabaseStatus } from "@/lib/supabase/client"
 
 interface AuthWrapperProps {
   children: React.ReactNode
@@ -15,8 +15,9 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = getSupabase()
-  const { isDemoMode } = getSupabaseStatus()
+  const supabase = getSupabaseClient()
+  const supabaseStatus = getSupabaseStatus()
+  const isDemoMode = supabaseStatus.isDemoMode
 
   // Rutas públicas que no requieren autenticación
   const publicRoutes = ["/login", "/test-auth"]

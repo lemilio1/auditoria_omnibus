@@ -3,12 +3,12 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { getSupabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase/client"
 
 export default function TestAuthPage() {
   const [result, setResult] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const supabase = getSupabase()
+  const supabase = getSupabaseClient()
 
   const testConnection = async () => {
     setIsLoading(true)

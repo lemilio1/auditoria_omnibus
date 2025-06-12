@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { getSupabaseClient } from "@/lib/supabase/client"
 
 interface Novedad {
   id: number
@@ -35,6 +36,7 @@ interface Novedad {
   fecha_vencimiento?: string
   creado_por: string
   asignado_a?: string
+  user_id?: string
 }
 
 const novedadesDemo: Novedad[] = [
@@ -83,6 +85,7 @@ export default function NovedadesPage() {
   const [activeTab, setActiveTab] = useState("todas")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const { toast } = useToast()
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     const filtered = novedades.filter((novedad) => {
@@ -131,28 +134,63 @@ export default function NovedadesPage() {
     )
   }
 
-  const handleCreateNovedad = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateNovedad = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+    setIsLoading(true)
 
-    const nuevaNovedad: Novedad = {
-      id: Date.now(),
-      titulo: formData.get("titulo") as string,
-      descripcion: formData.get("descripcion") as string,
-      tipo: formData.get("tipo") as any,
-      prioridad: formData.get("prioridad") as any,
-      estado: "pendiente",
-      bus_numero: formData.get("bus_numero") as string,
-      fecha_creacion: new Date().toISOString(),
-      creado_por: "Usuario Actual",
+    try {
+      const formData = new FormData(e.currentTarget)
+      const supabase = getSupabaseClient()
+
+      // Obtener el usuario actual
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error("No hay sesión activa")
+      }
+
+      const nuevaNovedad = {
+        titulo: formData.get("titulo") as string,
+        descripcion: formData.get("descripcion") as string,
+        tipo: formData.get("tipo") as string,
+        prioridad: formData.get("prioridad") as string,
+        estado: "pendiente",
+        bus_numero: formData.get("bus_numero") as string,
+        fecha_creacion: new Date().toISOString(),
+        creado_por: session.user.email || "Usuario",
+        user_id: session.user.id,
+      }
+
+      console.log("Creando novedad:", nuevaNovedad)
+
+      const { data, error } = await supabase.from("novedades").insert([nuevaNovedad]).select().single()
+
+      if (error) {
+        console.error("Error al crear novedad:", error)
+        throw new Error(error.message)
+      }
+
+      console.log("Novedad creada exitosamente:", data)
+
+      // Actualizar la lista local
+      setNovedades([data, ...novedades])
+      setIsCreateDialogOpen(false)
+
+      toast({
+        title: "Novedad creada",
+        description: "La novedad ha sido registrada exitosamente",
+      })
+    } catch (error: any) {
+      console.error("Error al crear novedad:", error)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo crear la novedad",
+      })
+    } finally {
+      setIsLoading(false)
     }
-
-    setNovedades([nuevaNovedad, ...novedades])
-    setIsCreateDialogOpen(false)
-    toast({
-      title: "Novedad creada",
-      description: "La novedad ha sido registrada exitosamente",
-    })
   }
 
   return (
@@ -229,7 +267,9 @@ export default function NovedadesPage() {
                   <Button type="button" variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Crear Novedad</Button>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? "Creando..." : "Crear Novedad"}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>

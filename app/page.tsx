@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getSupabase, getSupabaseStatus } from "@/lib/supabase"
+import { getSupabaseClient, getSupabaseStatus } from "@/lib/supabase/client"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import { SidebarProvider } from "@/components/ui/sidebar"
@@ -15,7 +15,7 @@ export default function HomePage() {
   const [user, setUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isDemoMode, setIsDemoMode] = useState(false)
-  const supabase = getSupabase()
+  const supabase = getSupabaseClient()
 
   useEffect(() => {
     async function getUser() {

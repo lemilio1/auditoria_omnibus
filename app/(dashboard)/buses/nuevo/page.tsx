@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Save } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ImageUpload } from "@/components/ui/image-upload"
+import { getSupabaseClient } from "@/lib/supabase/client"
 
 export default function NuevoBusPage() {
   const router = useRouter()
@@ -27,22 +28,33 @@ export default function NuevoBusPage() {
     try {
       const formData = new FormData(e.currentTarget)
 
-      // Simular creación del bus
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
       const nuevoBus = {
-        numero_interno: formData.get("numero_interno"),
-        marca: formData.get("marca"),
-        modelo: formData.get("modelo"),
-        patente: formData.get("patente"),
-        año: formData.get("año"),
-        capacidad: formData.get("capacidad"),
-        estado: formData.get("estado"),
-        observaciones: formData.get("observaciones"),
-        imagenes: imagenes,
+        numero_interno: formData.get("numero_interno") as string,
+        marca: formData.get("marca") as string,
+        modelo: formData.get("modelo") as string,
+        patente: formData.get("patente") as string,
+        año: Number.parseInt(formData.get("año") as string) || null,
+        capacidad: Number.parseInt(formData.get("capacidad") as string) || null,
+        estado: (formData.get("estado") as string) || "activo",
+        observaciones: (formData.get("observaciones") as string) || null,
+        fecha_ingreso: (formData.get("fecha_ingreso") as string) || new Date().toISOString().split("T")[0],
+        proxima_revision: (formData.get("proxima_revision") as string) || null,
+        created_at: new Date().toISOString(),
       }
 
-      console.log("Nuevo bus creado:", nuevoBus)
+      console.log("Creando bus:", nuevoBus)
+
+      // Usar getSupabaseClient en lugar de getSupabase
+      const supabase = getSupabaseClient()
+
+      const { data, error } = await supabase.from("buses").insert([nuevoBus]).select().single()
+
+      if (error) {
+        console.error("Error al crear bus:", error)
+        throw new Error(error.message)
+      }
+
+      console.log("Bus creado exitosamente:", data)
 
       toast({
         title: "Bus creado exitosamente",
@@ -50,11 +62,12 @@ export default function NuevoBusPage() {
       })
 
       router.push("/buses")
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error al crear bus:", error)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo crear el bus. Intente nuevamente.",
+        description: error.message || "No se pudo crear el bus. Intente nuevamente.",
       })
     } finally {
       setIsLoading(false)
